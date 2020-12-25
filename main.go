@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// docbaseコマンドの本体
 var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("the stupid content tracker")

@@ -41,21 +41,23 @@ var catFileCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		defer r.Close()
-		if catFileCmdFlagT == true {
-			// https://stackoverflow.com/questions/9644139/from-io-reader-to-string-in-go
-			buf := new(strings.Builder)
-			n, err := io.Copy(buf, r)
-			if err != nil {
-				log.Fatal(err, n)
-			}
 
-			header := strings.SplitN(buf.String(), "\x00", 2)[0]
-			objectType := strings.SplitN(header, " ", 2)[0]
+		// https://stackoverflow.com/questions/9644139/from-io-reader-to-string-in-go
+		buf := new(strings.Builder)
+		n, err := io.Copy(buf, r)
+		if err != nil {
+			log.Fatal(err, n)
+		}
+		splited := strings.SplitN(buf.String(), "\x00", 2)
+		header := splited[0]
+		content := splited[1]
+		objectType := strings.SplitN(header, " ", 2)[0]
+
+		if catFileCmdFlagT == true {
 			fmt.Println(objectType)
 		} else if catFileCmdFlagP == true {
-			io.Copy(os.Stdout, r)
+			fmt.Println(content)
 		}
-
 	},
 	Args: cobra.ExactArgs(1),
 }

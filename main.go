@@ -3,64 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 
+	"github.com/toricor/go-mini-git/object"
 	"github.com/toricor/go-mini-git/repository"
 
 	"github.com/spf13/cobra"
 )
-
-type ObjectType int
-
-const (
-	Unknown ObjectType = iota
-	Blob
-	Commit
-	Tree
-	Tag
-)
-
-var objectTypeLabelMap = map[string]ObjectType{
-	"blob":   Blob,
-	"commit": Commit,
-	"tree":   Tree,
-	"tag":    Tag,
-}
-
-var objectTypeMap = map[ObjectType]string{
-	Blob:   "blob",
-	Commit: "commit",
-	Tree:   "tree",
-	Tag:    "tag",
-}
-
-func (t ObjectType) String() string {
-	if o, ok := objectTypeMap[t]; ok {
-		return o
-	}
-	return "Unknown ObjectType"
-}
-
-type GitObject struct {
-	objectType ObjectType
-	size       uint64
-	content    string
-}
-
-func buildGitObject(uncompressed string) GitObject {
-	splited := strings.SplitN(uncompressed, "\x00", 2)
-	header := splited[0]
-	content := splited[1]
-	objectType := strings.SplitN(header, " ", 2)[0]
-	size, _ := strconv.ParseUint(strings.SplitN(header, " ", 2)[1], 10, 64)
-
-	return GitObject{
-		objectType: objectTypeLabelMap[objectType],
-		size:       size,
-		content:    content,
-	}
-}
 
 // Command
 var rootCmd = &cobra.Command{
@@ -79,12 +27,14 @@ var catFileCmd = &cobra.Command{
 		sha1 := args[0]
 		targetPath := repository.GetGitObjectFilePath(sha1)
 		uncompressed := repository.GetUncompressedContent(targetPath)
-		gitObject := buildGitObject(uncompressed)
+		gitObject := object.BuildGitObject(uncompressed)
 
 		if catFileCmdFlagT == true {
-			fmt.Println(gitObject.objectType)
+			fmt.Println(gitObject.ObjectType)
 		} else if catFileCmdFlagP == true {
-			fmt.Println(gitObject.content)
+			fmt.Println(gitObject.Content)
+		} else {
+			fmt.Println("unreachable")
 		}
 	},
 	Args: cobra.ExactArgs(1),

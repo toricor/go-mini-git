@@ -1,19 +1,68 @@
 package main
 
 import (
-	"bytes"
-	"compress/zlib"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
 	"os"
-	"path/filepath"
+	"strconv"
 	"strings"
+
+	"github.com/toricor/go-mini-git/repository"
 
 	"github.com/spf13/cobra"
 )
 
+type ObjectType int
+
+const (
+	Unknown ObjectType = iota
+	Blob
+	Commit
+	Tree
+	Tag
+)
+
+var objectTypeLabelMap = map[string]ObjectType{
+	"blob":   Blob,
+	"commit": Commit,
+	"tree":   Tree,
+	"tag":    Tag,
+}
+
+var objectTypeMap = map[ObjectType]string{
+	Blob:   "blob",
+	Commit: "commit",
+	Tree:   "tree",
+	Tag:    "tag",
+}
+
+func (t ObjectType) String() string {
+	if o, ok := objectTypeMap[t]; ok {
+		return o
+	}
+	return "Unknown ObjectType"
+}
+
+type GitObject struct {
+	objectType ObjectType
+	size       uint64
+	content    string
+}
+
+func buildGitObject(uncompressed string) GitObject {
+	splited := strings.SplitN(uncompressed, "\x00", 2)
+	header := splited[0]
+	content := splited[1]
+	objectType := strings.SplitN(header, " ", 2)[0]
+	size, _ := strconv.ParseUint(strings.SplitN(header, " ", 2)[1], 10, 64)
+
+	return GitObject{
+		objectType: objectTypeLabelMap[objectType],
+		size:       size,
+		content:    content,
+	}
+}
+
+// Command
 var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("the stupid content tracker")
@@ -28,35 +77,14 @@ var catFileCmd = &cobra.Command{
 	Long:  "Provide content or type and size information for repository objects",
 	Run: func(cmd *cobra.Command, args []string) {
 		sha1 := args[0]
-		targetPath := filepath.Join(".git", "objects", sha1[0:2], sha1[2:])
-
-		buff, err := ioutil.ReadFile(targetPath)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		b := bytes.NewReader(buff)
-		r, err := zlib.NewReader(b)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer r.Close()
-
-		// https://stackoverflow.com/questions/9644139/from-io-reader-to-string-in-go
-		buf := new(strings.Builder)
-		n, err := io.Copy(buf, r)
-		if err != nil {
-			log.Fatal(err, n)
-		}
-		splited := strings.SplitN(buf.String(), "\x00", 2)
-		header := splited[0]
-		content := splited[1]
-		objectType := strings.SplitN(header, " ", 2)[0]
+		targetPath := repository.GetGitObjectFilePath(sha1)
+		uncompressed := repository.GetUncompressedContent(targetPath)
+		gitObject := buildGitObject(uncompressed)
 
 		if catFileCmdFlagT == true {
-			fmt.Println(objectType)
+			fmt.Println(gitObject.objectType)
 		} else if catFileCmdFlagP == true {
-			fmt.Println(content)
+			fmt.Println(gitObject.content)
 		}
 	},
 	Args: cobra.ExactArgs(1),

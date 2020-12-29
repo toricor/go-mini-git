@@ -7,3 +7,6 @@ toy git
 
 ## tips
 `git cat-file --batch-check --batch-all-objects` gives you a list of git objects(sha1 + type + size). 
+
+# LICENSE
+MIT
